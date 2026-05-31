@@ -102,7 +102,7 @@ export function TrendChart({ data, categories = [] }: TrendChartProps) {
             
             {/* 마우스 올렸을 때 보여주는 정보 창 */}
             <Tooltip 
-              formatter={(value: any, name: string) => [new Intl.NumberFormat('ko-KR').format(Number(value)) + '원', name === 'total' ? '총 자산' : name]}
+              formatter={(value: any, name: any) => [new Intl.NumberFormat('ko-KR').format(Number(value)) + '원', name === 'total' ? '총 자산' : name]}
               labelFormatter={(label) => `기록일: ${label}`}
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '0.75rem', color: '#f8fafc' }}
               itemStyle={{ color: '#fff' }}
