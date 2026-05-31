@@ -18,6 +18,8 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
   // 수정할 때 임시로 값을 담아둘 상태들
   const [editName, setEditName] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editSubCategory, setEditSubCategory] = useState('');
 
   // 1. 자산군별로 총액을 미리 계산해 둡니다 (비율 계산용)
   const categoryTotals: Record<string, number> = {};
@@ -36,6 +38,8 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
     setEditingId(asset.id);
     setEditName(asset.name);
     setEditAmount(asset.amount);
+    setEditCategory(asset.category);
+    setEditSubCategory(asset.sub_category || '');
   };
 
   const handleSaveClick = (asset: Asset) => {
@@ -43,8 +47,8 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
       name: editName,
       amount: editAmount,
       currency: asset.currency,
-      category: asset.category,
-      sub_category: asset.sub_category,
+      category: editCategory,
+      sub_category: editSubCategory || undefined,
       record_date: asset.record_date
     });
     setEditingId(null);
@@ -82,12 +86,53 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
               return (
                 <tr key={asset.id} className="border-b border-slate-800/50 hover:bg-white/5 transition-colors group">
                   <td className="py-4 px-2">
-                    <span 
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium"
-                      style={{ backgroundColor: `${badgeColor}33`, color: badgeColor }}
-                    >
-                      {displayCategory}
-                    </span>
+                    {isEditing ? (
+                      <div className="flex flex-col gap-1 w-28">
+                        <select
+                          value={editCategory}
+                          onChange={(e) => {
+                            setEditCategory(e.target.value);
+                            setEditSubCategory('');
+                          }}
+                          className="bg-slate-800 border border-slate-600 rounded px-1 py-1 text-white text-xs w-full"
+                        >
+                          <option value="현금">현금</option>
+                          <option value="주식">주식</option>
+                          <option value="가상자산">가상자산</option>
+                          <option value="부동산">부동산</option>
+                          <option value="기타">기타</option>
+                        </select>
+                        {(editCategory === '주식' || editCategory === '가상자산') && (
+                          <select
+                            value={editSubCategory}
+                            onChange={(e) => setEditSubCategory(e.target.value)}
+                            className="bg-slate-800 border border-slate-600 rounded px-1 py-1 text-white text-xs w-full"
+                          >
+                            <option value="" disabled>선택</option>
+                            {editCategory === '주식' && (
+                              <>
+                                <option value="국내주식">국내주식</option>
+                                <option value="해외주식">해외주식</option>
+                              </>
+                            )}
+                            {editCategory === '가상자산' && (
+                              <>
+                                <option value="국내거래소">국내거래소</option>
+                                <option value="해외거래소">해외거래소</option>
+                                <option value="개인지갑">개인지갑</option>
+                              </>
+                            )}
+                          </select>
+                        )}
+                      </div>
+                    ) : (
+                      <span 
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap"
+                        style={{ backgroundColor: `${badgeColor}33`, color: badgeColor }}
+                      >
+                        {displayCategory}
+                      </span>
+                    )}
                   </td>
                   
                   <td className="py-4 px-2">

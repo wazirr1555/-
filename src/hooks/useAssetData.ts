@@ -34,8 +34,8 @@ export function useAssetData(userId?: string) {
     if (!userId) return; // 유저 ID가 없으면 데이터를 불러오지 않음
     
     setLoading(true);
-    // Supabase의 'assets' 테이블에서 현재 사용자의 데이터만 가져옵니다.
-    const { data, error } = await supabase.from('assets').select('*').eq('user_id', userId);
+    // Supabase의 'assets' 테이블에서 현재 사용자의 데이터만 가져오며, 생성일(수정일) 기준으로 정렬합니다.
+    const { data, error } = await supabase.from('assets').select('*').eq('user_id', userId).order('created_at', { ascending: true });
     
     if (error) {
       console.error('데이터 불러오기 실패:', error);
@@ -139,7 +139,8 @@ export function useAssetData(userId?: string) {
       currency: encryptData(updatedAsset.currency),
       category: encryptData(updatedAsset.category),
       sub_category: updatedAsset.sub_category ? encryptData(updatedAsset.sub_category) : null,
-      record_date: updatedAsset.record_date
+      record_date: updatedAsset.record_date,
+      created_at: new Date().toISOString() // 수정 시 생성일을 갱신하여 목록 최상단으로 올라오게 함
     };
 
     const { error } = await supabase.from('assets').update(encryptedAsset).eq('id', id);
