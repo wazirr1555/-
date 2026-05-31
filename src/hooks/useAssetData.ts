@@ -9,7 +9,7 @@ import { useExchangeRate } from './useExchangeRate';
 // 리액트 컴포넌트(화면)에서는 '보여주는' 역할만 하고,
 // '데이터를 불러오고, 암호화해서 저장하는' 복잡한 로직은 모두 이 파일에서 처리합니다.
 
-export function useAssetData() {
+export function useAssetData(userId?: string) {
   // DB에서 복호화된 원본 데이터를 가지고 있는 상태
   const [rawAssets, setRawAssets] = useState<Asset[]>([]);
   const { usdToKrw } = useExchangeRate();
@@ -31,9 +31,11 @@ export function useAssetData() {
 
   // 1. 자산 데이터 불러오기 (Read)
   const fetchAssets = async () => {
+    if (!userId) return; // 유저 ID가 없으면 데이터를 불러오지 않음
+    
     setLoading(true);
-    // Supabase의 'assets' 테이블에서 모든 데이터를 가져옵니다.
-    const { data, error } = await supabase.from('assets').select('*');
+    // Supabase의 'assets' 테이블에서 현재 사용자의 데이터만 가져옵니다.
+    const { data, error } = await supabase.from('assets').select('*').eq('user_id', userId);
     
     if (error) {
       console.error('데이터 불러오기 실패:', error);
@@ -55,10 +57,10 @@ export function useAssetData() {
     setLoading(false);
   };
 
-  // 앱이 처음 켜질 때 한 번 데이터를 불러오도록 합니다.
+  // 앱이 처음 켜질 때, 또는 userId가 변경될 때 데이터를 불러오도록 합니다.
   useEffect(() => {
     fetchAssets();
-  }, []);
+  }, [userId]);
 
   // 2. 자산 데이터 추가하기 (Create)
   const addAsset = async (newAsset: Omit<Asset, 'id' | 'created_at'>) => {

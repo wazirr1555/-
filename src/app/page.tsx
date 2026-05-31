@@ -9,10 +9,31 @@ import { AssetChart } from '../components/dashboards/AssetChart';
 import { TrendChart } from '../components/dashboards/TrendChart';
 import { AssetList } from '../components/dashboards/AssetList';
 import { AssetDiffDashboard } from '../components/dashboards/AssetDiffDashboard';
-import { Wallet, Calendar, Trash2 } from 'lucide-react';
+import { Wallet, Calendar, Trash2, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabase/client';
+import { AuthScreen } from '../components/auth/AuthScreen';
 
 export default function Home() {
-  const { assets, loading, addAsset, addAssets, deleteAsset, deleteAssetsByDate, updateAsset } = useAssetData();
+  const [session, setSession] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // 인증 상태 확인
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const { assets, loading, addAsset, addAssets, deleteAsset, deleteAssetsByDate, updateAsset } = useAssetData(session?.user?.id);
   
   // 흐름 차트(트렌드 차트)는 과거부터 지금까지 '모든 자산'의 변화를 봐야하므로 assets 전체를 가공합니다.
   const { trendData, trendCategories } = useChartData(assets);
@@ -58,6 +79,18 @@ export default function Home() {
   // 선택된 날짜의 자산만으로 도넛 차트 데이터를 다시 계산합니다.
   const { categoryData: currentCategoryData } = useChartData(currentDateAssets);
 
+  // 인증 상태 로딩 중이면 빈 화면(또는 스피너)을 보여줍니다.
+  if (authLoading) {
+    return <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <span className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></span>
+    </div>;
+  }
+
+  // 로그인하지 않았다면 로그인 화면을 보여줍니다.
+  if (!session) {
+    return <AuthScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans selection:bg-purple-500/30">
       
@@ -65,18 +98,25 @@ export default function Home() {
         <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
           <Wallet className="text-white w-7 h-7" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-fuchsia-300">
             내 자산 지킴이
           </h1>
           <p className="text-slate-400 text-sm mt-1">안전하게 암호화되어 관리되는 나만의 자산 대시보드</p>
         </div>
+        <button 
+          onClick={() => supabase.auth.signOut()}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-700 font-medium text-sm"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">로그아웃</span>
+        </button>
       </header>
 
       <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         <section className="lg:col-span-4 flex flex-col gap-6">
-          <AssetInputForm onAdd={addAsset} onAddMultiple={addAssets} assets={assets} />
+          <AssetInputForm onAdd={addAsset} onAddMultiple={addAssets} assets={assets} userId={session.user.id} />
         </section>
 
         <section className="lg:col-span-8 flex flex-col gap-6">

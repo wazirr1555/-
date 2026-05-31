@@ -10,9 +10,10 @@ interface AssetInputFormProps {
   onAdd: (asset: { name: string; amount: string; currency: string; category: string; sub_category?: string; record_date: string; user_id: string }) => void;
   onAddMultiple?: (assets: Omit<Asset, 'id' | 'created_at'>[]) => void;
   assets?: Asset[];
+  userId?: string;
 }
 
-export function AssetInputForm({ onAdd, onAddMultiple, assets = [] }: AssetInputFormProps) {
+export function AssetInputForm({ onAdd, onAddMultiple, assets = [], userId = 'default_user' }: AssetInputFormProps) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('KRW');
@@ -73,7 +74,7 @@ export function AssetInputForm({ onAdd, onAddMultiple, assets = [] }: AssetInput
     }
 
     onAdd({
-      user_id: 'user-123',
+      user_id: userId,
       name,
       amount,
       currency,
@@ -107,7 +108,7 @@ export function AssetInputForm({ onAdd, onAddMultiple, assets = [] }: AssetInput
 
     // 4. 불러온 목록에 현재 날짜를 적용하여 새로 추가합니다.
     const newAssetsToInsert = prevAssets.map(a => ({
-      user_id: 'user-123',
+      user_id: userId,
       name: a.name,
       amount: a.amount,
       currency: a.currency || 'KRW',
