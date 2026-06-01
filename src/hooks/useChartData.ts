@@ -21,9 +21,10 @@ export interface TrendDataPoint {
 export function useChartData(assets: Asset[]) {
   // useMemo는 자산(assets) 데이터가 바뀔 때만 이 계산을 다시 하도록 도와주는 리액트 기능입니다.
   // 이렇게 하면 화면이 깜빡일 때마다 불필요한 계산을 막아줍니다.
-  const categoryData = useMemo(() => {
+  const { assetCategoryData, liabilityCategoryData } = useMemo(() => {
     // 1. 카테고리별로 금액을 누적할 바구니(객체)를 만듭니다.
-    const totals: Record<string, number> = {};
+    const assetTotals: Record<string, number> = {};
+    const liabilityTotals: Record<string, number> = {};
 
     assets.forEach((asset) => {
       // 실시간 환율이 적용된 convertedAmount가 있다면 그것을 쓰고, 없으면 기존 방식을 사용합니다.
@@ -35,28 +36,42 @@ export function useChartData(assets: Asset[]) {
       // 옵션 B: 하위 분류가 있으면 하위 분류를 우선적으로 보여줍니다.
       const displayCategory = asset.sub_category || asset.category;
 
-      if (totals[displayCategory]) {
-        totals[displayCategory] += amountValue;
+      if (asset.category === '부채') {
+        if (liabilityTotals[displayCategory]) {
+          liabilityTotals[displayCategory] += amountValue;
+        } else {
+          liabilityTotals[displayCategory] = amountValue;
+        }
       } else {
-        totals[displayCategory] = amountValue;
+        if (assetTotals[displayCategory]) {
+          assetTotals[displayCategory] += amountValue;
+        } else {
+          assetTotals[displayCategory] = amountValue;
+        }
       }
     });
 
     // 2. 바구니(객체) 형태를 차트가 좋아하는 배열(Array) 형태로 바꿉니다.
     // 도넛 차트 범례에서 가장 비율이 높은 자산이 왼쪽에 나오도록 금액이 큰 순서대로 정렬합니다.
-    const chartArray: ChartDataPoint[] = Object.keys(totals).map((key) => ({
+    const assetArray: ChartDataPoint[] = Object.keys(assetTotals).map((key) => ({
       name: key,
-      value: totals[key]
+      value: assetTotals[key]
     })).sort((a, b) => b.value - a.value);
 
-    return chartArray;
+    const liabilityArray: ChartDataPoint[] = Object.keys(liabilityTotals).map((key) => ({
+      name: key,
+      value: liabilityTotals[key]
+    })).sort((a, b) => b.value - a.value);
+
+    return { assetCategoryData: assetArray, liabilityCategoryData: liabilityArray };
   }, [assets]); // assets가 변경될 때만 재계산!
 
   // 시간에 따른 자산 변화 흐름(트렌드) 데이터 계산 (Stacked Area Chart용)
   const { trendData, trendCategories } = useMemo(() => {
     // 날짜별, 그리고 카테고리별 합계를 저장할 객체
     const dailyTotals: Record<string, Record<string, number>> = {};
-    const categories: Set<string> = new Set(); // 존재하는 모든 카테고리 수집
+    const dailyLiabilities: Record<string, number> = {}; // 날짜별 총 부채
+    const categories: Set<string> = new Set(); // 존재하는 모든 '자산' 카테고리 수집
     const overallTotals: Record<string, number> = {}; // 정렬을 위해 전체 기간 합계 수집
 
     assets.forEach((asset) => {
@@ -67,16 +82,20 @@ export function useChartData(assets: Asset[]) {
       
       if (isNaN(amountValue)) return;
 
-      categories.add(displayCategory);
-      overallTotals[displayCategory] = (overallTotals[displayCategory] || 0) + amountValue;
-
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = {};
-      }
-      if (dailyTotals[date][displayCategory]) {
-        dailyTotals[date][displayCategory] += amountValue;
+      if (asset.category === '부채') {
+        dailyLiabilities[date] = (dailyLiabilities[date] || 0) + amountValue;
       } else {
-        dailyTotals[date][displayCategory] = amountValue;
+        categories.add(displayCategory);
+        overallTotals[displayCategory] = (overallTotals[displayCategory] || 0) + amountValue;
+
+        if (!dailyTotals[date]) {
+          dailyTotals[date] = {};
+        }
+        if (dailyTotals[date][displayCategory]) {
+          dailyTotals[date][displayCategory] += amountValue;
+        } else {
+          dailyTotals[date][displayCategory] = amountValue;
+        }
       }
     });
 
@@ -89,12 +108,14 @@ export function useChartData(assets: Asset[]) {
       
       // 각 카테고리별로 해당 날짜에 입력된 총액을 그대로 차트에 반영합니다 (누적 아님).
       categories.forEach(cat => {
-        const val = dailyTotals[date][cat] || 0;
+        const val = dailyTotals[date] ? dailyTotals[date][cat] || 0 : 0;
         point[cat] = val;
         dayTotal += val;
       });
       
-      point.total = dayTotal;
+      const dayLiability = dailyLiabilities[date] || 0;
+      point.total = dayTotal; // 총 자산
+      point.netWorth = dayTotal - dayLiability; // 순자산
       return point;
     });
 
@@ -106,7 +127,8 @@ export function useChartData(assets: Asset[]) {
   }, [assets]);
 
   return {
-    categoryData,
+    assetCategoryData,
+    liabilityCategoryData,
     trendData,
     trendCategories
   };

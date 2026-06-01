@@ -100,9 +100,10 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
                           <option value="주식">주식</option>
                           <option value="가상자산">가상자산</option>
                           <option value="부동산">부동산</option>
+                          <option value="부채">부채</option>
                           <option value="기타">기타</option>
                         </select>
-                        {(editCategory === '주식' || editCategory === '가상자산') && (
+                        {(editCategory === '주식' || editCategory === '가상자산' || editCategory === '부채') && (
                           <select
                             value={editSubCategory}
                             onChange={(e) => setEditSubCategory(e.target.value)}
@@ -120,6 +121,13 @@ export function AssetList({ assets, onDelete, onUpdate }: AssetListProps) {
                                 <option value="국내거래소">국내거래소</option>
                                 <option value="해외거래소">해외거래소</option>
                                 <option value="개인지갑">개인지갑</option>
+                              </>
+                            )}
+                            {editCategory === '부채' && (
+                              <>
+                                <option value="대출">대출</option>
+                                <option value="신용카드">신용카드</option>
+                                <option value="기타부채">기타부채</option>
                               </>
                             )}
                           </select>

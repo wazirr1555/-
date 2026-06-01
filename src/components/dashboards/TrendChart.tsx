@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendDataPoint } from '../../hooks/useChartData';
 
 // 교육용 주석:
@@ -78,7 +78,7 @@ export function TrendChart({ data, categories = [] }: TrendChartProps) {
 
       <div className="flex-1 w-full relative">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
+          <ComposedChart
             data={data}
             margin={{ top: 10, right: 10, left: 20, bottom: 0 }}
           >
@@ -102,7 +102,10 @@ export function TrendChart({ data, categories = [] }: TrendChartProps) {
             
             {/* 마우스 올렸을 때 보여주는 정보 창 */}
             <Tooltip 
-              formatter={(value: any, name: any) => [new Intl.NumberFormat('ko-KR').format(Number(value)) + '원', name === 'total' ? '총 자산' : name]}
+              formatter={(value: any, name: any) => {
+                const displayName = name === 'total' ? '총 자산' : name === 'netWorth' ? '순자산' : name;
+                return [new Intl.NumberFormat('ko-KR').format(Number(value)) + '원', displayName];
+              }}
               labelFormatter={(label) => `기록일: ${label}`}
               contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '0.75rem', color: '#f8fafc' }}
               itemStyle={{ color: '#fff' }}
@@ -141,7 +144,19 @@ export function TrendChart({ data, categories = [] }: TrendChartProps) {
                 />
               );
             })}
-          </AreaChart>
+            
+            {/* 순자산(netWorth) 선 그래프 추가 */}
+            {selectedCategory === null && (
+              <Line 
+                type="monotone" 
+                dataKey="netWorth" 
+                stroke="#f59e0b" // 밝은 주황색
+                strokeWidth={3}
+                dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
+              />
+            )}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       {/* Recharts Legend 대신 직접 HTML로 범례를 그립니다. categories는 비중 내림차순 정렬이므로 순서가 보장됩니다. */}
@@ -159,6 +174,16 @@ export function TrendChart({ data, categories = [] }: TrendChartProps) {
             </div>
           );
         })}
+        
+        {/* 순자산 범례 추가 */}
+        {selectedCategory === null && (
+          <div className="flex items-center gap-1.5 text-sm text-amber-400 font-bold ml-2">
+            <span 
+              className="w-4 h-1 rounded-full inline-block flex-shrink-0 bg-amber-500" 
+            />
+            순자산
+          </div>
+        )}
       </div>
     </div>
   );

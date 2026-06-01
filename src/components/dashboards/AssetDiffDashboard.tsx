@@ -22,6 +22,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   '해외거래소': '🌐',
   '개인지갑': '💼',
   '부동산': '🏠',
+  '부채': '💳',
+  '대출': '🏦',
+  '신용카드': '💳',
+  '기타부채': '📄',
   '기타': '📦'
 };
 
@@ -38,19 +42,27 @@ interface DiffItem {
 export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashboardProps) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  // 현재/과거 자산 총액 계산
-  const currentTotal = useMemo(() => {
-    return currentAssets.reduce((sum, a) => {
+  // 현재/과거 순자산 및 총 자산(비율 계산용) 계산
+  const { currentTotal, currentTotalAsset } = useMemo(() => {
+    return currentAssets.reduce((acc, a) => {
       const val = a.convertedAmount ?? Number(a.amount);
-      return isNaN(val) ? sum : sum + val;
-    }, 0);
+      if (isNaN(val)) return acc;
+      if (a.category === '부채') {
+        return { currentTotal: acc.currentTotal - val, currentTotalAsset: acc.currentTotalAsset };
+      }
+      return { currentTotal: acc.currentTotal + val, currentTotalAsset: acc.currentTotalAsset + val };
+    }, { currentTotal: 0, currentTotalAsset: 0 });
   }, [currentAssets]);
 
-  const prevTotal = useMemo(() => {
-    return prevAssets.reduce((sum, a) => {
+  const { prevTotal, prevTotalAsset } = useMemo(() => {
+    return prevAssets.reduce((acc, a) => {
       const val = a.convertedAmount ?? Number(a.amount);
-      return isNaN(val) ? sum : sum + val;
-    }, 0);
+      if (isNaN(val)) return acc;
+      if (a.category === '부채') {
+        return { prevTotal: acc.prevTotal - val, prevTotalAsset: acc.prevTotalAsset };
+      }
+      return { prevTotal: acc.prevTotal + val, prevTotalAsset: acc.prevTotalAsset + val };
+    }, { prevTotal: 0, prevTotalAsset: 0 });
   }, [prevAssets]);
 
   const totalDiffAmount = currentTotal - prevTotal;
@@ -88,7 +100,7 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
       const currentAmount = Math.round(currentMap[cat]?.total || 0);
       const prevAmount = Math.round(prevMap[cat]?.total || 0);
       const diffAmount = currentAmount - prevAmount;
-      const percentage = currentTotal > 0 ? (currentAmount / currentTotal) * 100 : 0;
+      const percentage = currentTotalAsset > 0 ? (currentAmount / currentTotalAsset) * 100 : 0;
 
       const subCategories = Array.from(new Set([
         ...Object.keys(currentMap[cat]?.subs || {}),
@@ -99,7 +111,7 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
         const subCurrent = Math.round(currentMap[cat]?.subs[sub] || 0);
         const subPrev = Math.round(prevMap[cat]?.subs[sub] || 0);
         const subDiff = subCurrent - subPrev;
-        const subPercentage = currentTotal > 0 ? (subCurrent / currentTotal) * 100 : 0;
+        const subPercentage = currentTotalAsset > 0 ? (subCurrent / currentTotalAsset) * 100 : 0;
         const subDiffPercentage = subPrev > 0 ? (subDiff / subPrev) * 100 : 0;
 
         return {
@@ -142,9 +154,16 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
   };
 
   // 재사용 가능한 아이템 렌더링 함수
-  const renderItemCard = (item: DiffItem, isSub: boolean = false) => {
+  const renderItemCard = (item: DiffItem, isSub: boolean = false, parentCategory?: string) => {
+    const isLiability = item.name === '부채' || parentCategory === '부채';
+    
     const isPositive = item.diffAmount > 0;
     const isNegative = item.diffAmount < 0;
+    
+    // 부채의 경우 증감의 긍정/부정 의미가 반대입니다.
+    const isGoodTrend = isLiability ? isNegative : isPositive;
+    const isBadTrend = isLiability ? isPositive : isNegative;
+    
     const hasSubs = item.subItems.length > 0;
     const isExpanded = expandedCategory === item.name;
 
@@ -179,7 +198,7 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
         {/* 비중(Proportion) 바 */}
         <div className="flex flex-col gap-1.5 mt-1">
           <div className="flex justify-between text-xs text-slate-400">
-            <span>전체 자산 중 비중</span>
+            <span>총 자산 대비 비중</span>
             <span className={`${isSub ? 'text-indigo-300' : 'text-purple-300'} font-medium`}>{Math.round(item.percentage)}%</span>
           </div>
           <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
@@ -193,16 +212,16 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
         {/* 증감액 (Diff) 표시 */}
         {prevAssets.length > 0 && (
           <div className={`mt-2 p-2.5 rounded-lg flex items-center justify-between text-sm font-medium ${
-            isPositive ? 'bg-emerald-500/10 text-emerald-400' : 
-            isNegative ? 'bg-red-500/10 text-red-400' : 
+            isGoodTrend ? 'bg-emerald-500/10 text-emerald-400' : 
+            isBadTrend ? 'bg-red-500/10 text-red-400' : 
             'bg-slate-700/30 text-slate-400'
           }`}>
             <span className="flex items-center gap-1.5 opacity-90 text-xs">
               지난번 대비
             </span>
             <div className="flex items-center gap-1">
-              {isPositive ? <TrendingUp className="w-4 h-4" /> : 
-               isNegative ? <TrendingDown className="w-4 h-4" /> : 
+              {isGoodTrend ? <TrendingUp className="w-4 h-4" /> : 
+               isBadTrend ? <TrendingDown className="w-4 h-4" /> : 
                <Minus className="w-4 h-4" />}
               <span>
                 {isPositive ? '+' : ''}
@@ -237,7 +256,7 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
       {prevAssets.length > 0 && (
         <div className="mb-6 bg-gradient-to-r from-slate-800/80 to-slate-900/80 border border-slate-700/50 p-5 rounded-2xl flex items-center justify-between shadow-lg">
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">총 자산 변동 (지난번 대비)</p>
+            <p className="text-slate-400 text-sm font-medium mb-1">순자산 변동 (지난번 대비)</p>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-white">
                 {new Intl.NumberFormat('ko-KR').format(currentTotal)}원
@@ -275,7 +294,7 @@ export function AssetDiffDashboard({ currentAssets, prevAssets }: AssetDiffDashb
             {/* 세부 분류 렌더링 (확장된 경우) */}
             {expandedCategory === catItem.name && catItem.subItems.length > 0 && (
               <div className="pl-6 flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                {catItem.subItems.map(subItem => renderItemCard(subItem, true))}
+                {catItem.subItems.map(subItem => renderItemCard(subItem, true, catItem.name))}
               </div>
             )}
           </div>

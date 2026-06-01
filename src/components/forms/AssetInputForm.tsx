@@ -68,7 +68,7 @@ export function AssetInputForm({ onAdd, onAddMultiple, assets = [], userId = 'de
       return;
     }
 
-    if ((category === '주식' || category === '가상자산') && !subCategory) {
+    if ((category === '주식' || category === '가상자산' || category === '부채') && !subCategory) {
       alert('세부 분류를 선택해주세요!');
       return;
     }
@@ -146,11 +146,12 @@ export function AssetInputForm({ onAdd, onAddMultiple, assets = [], userId = 'de
           <option value="주식" className="bg-slate-800">📈 주식</option>
           <option value="가상자산" className="bg-slate-800">🪙 가상자산</option>
           <option value="부동산" className="bg-slate-800">🏠 부동산</option>
+          <option value="부채" className="bg-slate-800">💳 부채</option>
           <option value="기타" className="bg-slate-800">📦 기타</option>
         </select>
       </div>
 
-      {(category === '주식' || category === '가상자산') && (
+      {(category === '주식' || category === '가상자산' || category === '부채') && (
         <div className="flex flex-col gap-1.5 w-full animate-in fade-in slide-in-from-top-2 duration-300">
           <label className="text-sm font-medium text-slate-300 ml-1">세부 분류</label>
           <select
@@ -171,6 +172,13 @@ export function AssetInputForm({ onAdd, onAddMultiple, assets = [], userId = 'de
                 <option value="국내거래소" className="bg-slate-800">🏦 국내거래소</option>
                 <option value="해외거래소" className="bg-slate-800">🌐 해외거래소</option>
                 <option value="개인지갑" className="bg-slate-800">💼 개인지갑</option>
+              </>
+            )}
+            {category === '부채' && (
+              <>
+                <option value="대출" className="bg-slate-800">🏦 대출</option>
+                <option value="신용카드" className="bg-slate-800">💳 신용카드</option>
+                <option value="기타부채" className="bg-slate-800">📄 기타부채</option>
               </>
             )}
           </select>

@@ -14,15 +14,27 @@ interface SummaryCardsProps {
 }
 
 export function SummaryCards({ assets, onAssetCountClick, onTotalAssetsClick }: SummaryCardsProps) {
-  // 복호화된 자산 목록(assets)을 돌면서 모든 금액을 더합니다.
-  const totalAmount = assets.reduce((sum, asset) => {
-    // 실시간 환율이 적용된 convertedAmount가 있다면 그것을 쓰고, 없으면 기존 방식을 사용합니다.
+  // 복호화된 자산 목록(assets)을 돌면서 자산과 부채를 각각 계산합니다.
+  let totalAsset = 0;
+  let totalLiability = 0;
+
+  assets.forEach((asset) => {
     const value = asset.convertedAmount ?? Number(asset.amount);
-    return isNaN(value) ? sum : sum + value;
-  }, 0);
+    if (!isNaN(value)) {
+      if (asset.category === '부채') {
+        totalLiability += value;
+      } else {
+        totalAsset += value;
+      }
+    }
+  });
+
+  const netWorth = totalAsset - totalLiability;
 
   // 숫자를 "1,000,000" 처럼 쉼표가 들어간 돈 형식으로 예쁘게 바꿔줍니다.
-  const formattedTotal = new Intl.NumberFormat('ko-KR').format(totalAmount);
+  const formattedNetWorth = new Intl.NumberFormat('ko-KR').format(netWorth);
+  const formattedTotalAsset = new Intl.NumberFormat('ko-KR').format(totalAsset);
+  const formattedTotalLiability = new Intl.NumberFormat('ko-KR').format(totalLiability);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -31,13 +43,23 @@ export function SummaryCards({ assets, onAssetCountClick, onTotalAssetsClick }: 
         onClick={onTotalAssetsClick}
         className={`p-6 rounded-2xl bg-gradient-to-br from-indigo-900/80 to-purple-900/80 border border-purple-500/30 backdrop-blur-xl shadow-xl flex items-center justify-between group transition-transform duration-300 ${onTotalAssetsClick ? 'cursor-pointer hover:scale-[1.02] hover:border-purple-400/60 hover:shadow-purple-500/20' : 'hover:scale-[1.02]'}`}
       >
-        <div>
-          <p className="text-purple-200 text-sm font-medium mb-1">나의 총 자산</p>
+        <div className="flex-1">
+          <p className="text-purple-200 text-sm font-medium mb-1">나의 순자산</p>
           <h3 className="text-3xl font-bold text-white tracking-tight">
-            {formattedTotal} <span className="text-xl text-purple-300 font-normal">원</span>
+            {formattedNetWorth} <span className="text-xl text-purple-300 font-normal">원</span>
           </h3>
+          <div className="mt-3 flex gap-4 text-xs font-medium">
+            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md text-emerald-300">
+              <span className="opacity-80">총 자산:</span> 
+              <span>{formattedTotalAsset}원</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-md text-rose-300">
+              <span className="opacity-80">총 부채:</span> 
+              <span>{formattedTotalLiability}원</span>
+            </div>
+          </div>
         </div>
-        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+        <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors ml-4 shrink-0">
           <Wallet className="w-6 h-6 text-purple-200" />
         </div>
       </div>

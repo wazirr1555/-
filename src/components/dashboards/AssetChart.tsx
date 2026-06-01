@@ -11,7 +11,8 @@ import { ArrowLeft } from 'lucide-react';
 // 'recharts'라는 유명한 차트 라이브러리를 사용하여 시각적으로 아름답게 표현합니다.
 
 interface AssetChartProps {
-  data: ChartDataPoint[];
+  assetData: ChartDataPoint[];
+  liabilityData: ChartDataPoint[];
   assets?: Asset[];
 }
 
@@ -34,17 +35,18 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   );
 };
 
-export function AssetChart({ data, assets = [] }: AssetChartProps) {
+export function AssetChart({ assetData, liabilityData, assets = [] }: AssetChartProps) {
   // Recharts는 브라우저 환경에서만 렌더링되어야 하므로, 마운트(Mount) 여부를 확인합니다.
   const [isMounted, setIsMounted] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [viewType, setViewType] = useState<'asset' | 'liability'>('asset');
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const displayData = useMemo(() => {
-    let rawData = data;
+    let rawData = viewType === 'asset' ? assetData : liabilityData;
     
     // 선택된 카테고리가 있다면 해당 하위 자산들을 추출합니다.
     if (selectedCategory) {
@@ -64,14 +66,14 @@ export function AssetChart({ data, assets = [] }: AssetChartProps) {
     // 최상위 화면이든 세부 화면이든 무조건 금액(비율)이 가장 큰 순서대로 내림차순 정렬합니다.
     // 그래야 Recharts 범례(Legend)에서 가장 큰 항목이 제일 먼저(가장 왼쪽) 그려집니다.
     return [...rawData].sort((a, b) => b.value - a.value);
-  }, [data, assets, selectedCategory]);
+  }, [assetData, liabilityData, viewType, assets, selectedCategory]);
 
   if (!isMounted) {
     return <div className="h-64 animate-pulse bg-slate-800/50 rounded-xl"></div>;
   }
 
   // 자산 데이터가 없을 경우 보여줄 빈 화면입니다.
-  if (!data || data.length === 0) {
+  if ((!assetData || assetData.length === 0) && (!liabilityData || liabilityData.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-64 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl">
         <p className="text-slate-400">등록된 자산이 없습니다.</p>
@@ -83,19 +85,44 @@ export function AssetChart({ data, assets = [] }: AssetChartProps) {
     <div className="p-6 bg-slate-900/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl h-[26rem] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          📊 {selectedCategory ? `${selectedCategory} 세부 비율` : '자산 비율'}
+          📊 {selectedCategory ? `${selectedCategory} 세부 비율` : (viewType === 'asset' ? '자산 비율' : '부채 비율')}
         </h2>
-        {selectedCategory && (
-          <button 
-            onClick={() => setSelectedCategory(null)}
-            className="flex items-center gap-1 text-sm px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            뒤로 가기
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!selectedCategory && (
+            <div className="flex bg-slate-800 rounded-lg p-1">
+              <button
+                onClick={() => setViewType('asset')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewType === 'asset' ? 'bg-purple-500/20 text-purple-300' : 'text-slate-400 hover:text-slate-300'}`}
+              >
+                자산
+              </button>
+              <button
+                onClick={() => setViewType('liability')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewType === 'liability' ? 'bg-rose-500/20 text-rose-300' : 'text-slate-400 hover:text-slate-300'}`}
+              >
+                부채
+              </button>
+            </div>
+          )}
+          {selectedCategory && (
+            <button 
+              onClick={() => setSelectedCategory(null)}
+              className="flex items-center gap-1 text-sm px-3 py-1.5 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              뒤로 가기
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex-1 w-full">
+      
+      {displayData.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-slate-400 text-sm">해당 항목에 등록된 내역이 없습니다.</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 w-full">
         {/* ResponsiveContainer는 차트가 화면 크기에 맞춰 자동으로 늘어나거나 줄어들게 해줍니다. */}
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -131,18 +158,20 @@ export function AssetChart({ data, assets = [] }: AssetChartProps) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      {/* Recharts Legend 대신 직접 HTML로 범례를 그립니다. displayData는 금액 내림차순 정렬이므로 순서가 보장됩니다. */}
-      <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 pt-4">
-        {displayData.map((entry, index) => (
-          <div key={entry.name} className="flex items-center gap-1.5 text-sm text-slate-300">
-            <span 
-              className="w-3 h-3 rounded-full inline-block flex-shrink-0" 
-              style={{ backgroundColor: COLORS[index % COLORS.length] }} 
-            />
-            {entry.name}
+          {/* Recharts Legend 대신 직접 HTML로 범례를 그립니다. displayData는 금액 내림차순 정렬이므로 순서가 보장됩니다. */}
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 pt-4">
+            {displayData.map((entry, index) => (
+              <div key={entry.name} className="flex items-center gap-1.5 text-sm text-slate-300">
+                <span 
+                  className="w-3 h-3 rounded-full inline-block flex-shrink-0" 
+                  style={{ backgroundColor: COLORS[index % COLORS.length] }} 
+                />
+                {entry.name}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }

@@ -77,7 +77,7 @@ export default function Home() {
   }, [assets, selectedDate]);
 
   // 선택된 날짜의 자산만으로 도넛 차트 데이터를 다시 계산합니다.
-  const { categoryData: currentCategoryData } = useChartData(currentDateAssets);
+  const { assetCategoryData: currentAssetData, liabilityCategoryData: currentLiabilityData } = useChartData(currentDateAssets);
 
   // 인증 상태 로딩 중이면 빈 화면(또는 스피너)을 보여줍니다.
   if (authLoading) {
@@ -184,7 +184,7 @@ export default function Home() {
               )}
 
               {/* 3. 도넛 차트 (선택된 날짜의 데이터 및 전체 자산 목록 전달) */}
-              <AssetChart data={currentCategoryData} assets={currentDateAssets} />
+              <AssetChart assetData={currentAssetData} liabilityData={currentLiabilityData} assets={currentDateAssets} />
 
               {/* 4. 흐름 차트 (이건 전체 날짜 추이를 봐야하므로 전체 자산으로 계산된 데이터 전달) */}
               <TrendChart data={trendData} categories={trendCategories} />
